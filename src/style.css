@@ -1433,3 +1433,246 @@ button {
 .right-panels:has(.module-panel:not([hidden])) .process {
   display: none;
 }
+
+.line-summary {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 6px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.line-summary b {
+  color: var(--text);
+  margin-left: 8px;
+  font-size: 17px;
+}
+.flow-panel {
+  position: absolute;
+  z-index: 4;
+  bottom: 155px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(850px, calc(100vw - 600px));
+  padding: 12px 16px;
+}
+.flow-panel[hidden] {
+  display: none;
+}
+.flow-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 11px;
+  margin-bottom: 10px;
+}
+.flow-heading small {
+  font-size: 8px;
+  color: #86908b;
+  margin-left: 6px;
+  letter-spacing: 1px;
+}
+#buffer-state {
+  color: #6c7873;
+  font-size: 10px;
+}
+#dispatch-button {
+  border: 1px solid #d7ded7;
+  background: #fff;
+  color: #617069;
+  border-radius: 5px;
+  padding: 5px 9px;
+  font-size: 10px;
+  cursor: pointer;
+}
+#dispatch-button.active {
+  background: #fff0e4;
+  border-color: #f2b084;
+  color: #b66a32;
+}
+.flow-stations {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 7px;
+}
+.flow-stations button {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 6px 8px;
+  border: 1px solid #e0e5de;
+  border-radius: 5px;
+  background: #f3f5f0;
+  color: #58665f;
+  text-align: left;
+  cursor: pointer;
+  min-width: 0;
+}
+.flow-stations button:not(:last-child)::after {
+  content: "›";
+  position: absolute;
+  right: -6px;
+  top: 18px;
+  color: #96a396;
+}
+.flow-number {
+  font:
+    10px "DM Sans",
+    sans-serif;
+  color: #98a199;
+}
+.flow-stations b {
+  font-size: 10px;
+  white-space: nowrap;
+}
+.flow-stations small {
+  font-size: 9px;
+  color: #8a958e;
+  white-space: nowrap;
+}
+.flow-stations [data-state="working"] {
+  border-color: #b2cdbb;
+  background: #edf4ec;
+}
+.flow-stations [data-state="working"] .flow-number {
+  color: #4b8f68;
+}
+.flow-stations [data-state="blocked"] {
+  border-color: #e7b17f;
+  background: #fcf1e5;
+}
+.flow-stations [data-state="reject"] {
+  border-color: #df9d92;
+  background: #fff0ea;
+}
+.trace-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 9px;
+  margin-top: 9px;
+  color: #809087;
+}
+#line-event {
+  flex: 1;
+  color: #627269;
+}
+body:is(
+    [data-scene="workshop"],
+    [data-scene="line"],
+    [data-scene="workpiece"],
+    [data-scene="robot"],
+    [data-scene="inspection"]
+  )
+  .zones {
+  display: none;
+}
+@media (max-width: 1400px) {
+  .flow-panel {
+    width: calc(100vw - 48px);
+    max-width: 850px;
+    bottom: 159px;
+  }
+  body:is(
+      [data-scene="workshop"],
+      [data-scene="line"],
+      [data-scene="workpiece"],
+      [data-scene="robot"],
+      [data-scene="inspection"]
+    )
+    .logistics {
+    display: none;
+  }
+}
+@media (max-width: 760px) {
+  .flow-panel {
+    width: calc(100vw - 28px);
+    padding: 10px;
+  }
+  .flow-heading small,
+  #buffer-state {
+    display: none;
+  }
+  .flow-stations {
+    gap: 4px;
+  }
+  .flow-stations button {
+    padding: 4px;
+  }
+  .flow-stations b {
+    font-size: 8px;
+    white-space: normal;
+  }
+  .flow-stations small {
+    font-size: 7px;
+  }
+  .flow-number {
+    font-size: 8px;
+  }
+}
+/* Keep the material route readable in the narrow desktop side panel. */
+@media (max-width: 760px) {
+  body:is(
+      [data-scene="workshop"],
+      [data-scene="line"],
+      [data-scene="workpiece"],
+      [data-scene="robot"],
+      [data-scene="inspection"]
+    )
+    .left-panels {
+    display: none;
+  }
+  .flow-panel {
+    bottom: 143px;
+  }
+  .flow-heading {
+    margin-bottom: 6px;
+  }
+  .flow-stations {
+    display: flex;
+    overflow-x: auto;
+    padding-bottom: 3px;
+    scrollbar-width: thin;
+  }
+  .flow-stations button {
+    flex: 0 0 77px;
+    padding: 5px;
+  }
+  .flow-stations b {
+    white-space: nowrap;
+    font-size: 9px;
+  }
+  .flow-stations .flow-number {
+    display: none;
+  }
+  .flow-stations small {
+    font-size: 8px;
+  }
+  .trace-line {
+    margin-top: 5px;
+    font-size: 8px;
+  }
+  #line-state {
+    display: none;
+  }
+  .scene-tools {
+    bottom: auto;
+    top: 145px;
+  }
+}
+.flow-stations small {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (max-width: 760px) {
+  #buffer-state {
+    display: inline;
+    font-size: 8px;
+  }
+  .flow-heading {
+    gap: 6px;
+  }
+}

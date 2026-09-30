@@ -101,7 +101,7 @@ export function battery() {
     },
   };
 }
-export function robot(x, z, index = 0) {
+export function robot(x, z, index = 0, options = {}) {
   const g = new THREE.Group();
   g.position.set(x, 0.7, z);
   selectable(
@@ -201,10 +201,12 @@ export function robot(x, z, index = 0) {
   const part = battery();
   g.add(part.group);
   const stationY = 1.55;
-  for (const p of [
-    [5, 0],
-    [0, -5],
-  ]) {
+  for (const p of options.tables === false
+    ? []
+    : [
+        [5, 0],
+        [0, -5],
+      ]) {
     box(g, [4, 0.15, 3], [p[0], stationY - 0.24, p[1]], "steel");
     for (let dz = -1.3; dz <= 1.3; dz += 0.32) {
       const roller = cyl(

@@ -2,11 +2,11 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 export const VIEWS = {
   overview: { name: "基地总览", target: [10, 0, 0], position: [166, 143, 181] },
-  workshop: { name: "装配车间", target: [-24, 1, 28], position: [19, 49, 81] },
-  robot: { name: "机械臂工序", target: [-47, 3, 24], position: [-35, 13, 40] },
-  inspection: { name: "质量检测", target: [-8, 3, 25], position: [3, 12, 40] },
+  workshop: { name: "装配车间", target: [-24, 1, 27], position: [-7, 58, 99] },
+  robot: { name: "机械臂工序", target: [-49, 3, 24], position: [-37, 13, 40] },
+  inspection: { name: "质量检测", target: [-9, 3, 25], position: [3, 12, 40] },
   port: { name: "智慧港口", target: [96, 5, -13], position: [145, 51, 52] },
-  module: { name: "模组拆解", target: [8, 4, 31], position: [17, 12, 45] },
+  module: { name: "模组拆解", target: [6, 4, 37], position: [15, 12, 51] },
 };
 export function createController(world, models, onSelect, onView, onCruise) {
   const { camera, renderer, scene } = world;
@@ -29,16 +29,24 @@ export function createController(world, models, onSelect, onView, onCruise) {
   boxHelper.visible = false;
   scene.add(boxHelper);
   function focus(view, key) {
+    const target = new THREE.Vector3(...view.target);
+    const position = new THREE.Vector3(...view.position);
+    if (key === "workshop")
+      position
+        .sub(target)
+        .multiplyScalar(Math.max(1, 1.55 / camera.aspect))
+        .add(target);
     transition = {
       from: camera.position.clone(),
       fromTarget: controls.target.clone(),
-      to: new THREE.Vector3(...view.position),
-      target: new THREE.Vector3(...view.target),
+      to: position,
+      target,
       t: 0,
     };
     onView(key, view.name);
   }
   function select(data, object) {
+    stopCruise();
     selection = object;
     onSelect(data);
     if (data.position) focus(data, data.kind);
@@ -99,11 +107,9 @@ export function createController(world, models, onSelect, onView, onCruise) {
     go(key) {
       stopCruise();
       focus(VIEWS[key], key);
-      if (key === "overview") {
-        selection = null;
-        boxHelper.visible = false;
-        onSelect(null);
-      }
+      selection = null;
+      boxHelper.visible = false;
+      onSelect(null);
     },
     select,
     toggleCruise() {

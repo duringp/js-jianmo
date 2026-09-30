@@ -118,8 +118,8 @@ export function updateInspection(s, time) {
     clamp = 1 - smooth(p.progress);
     contact = 1 - smooth(p.progress);
   }
-  s.clamps[0].position.x = -2.5 + 0.65 * clamp;
-  s.clamps[1].position.x = 2.5 - 0.65 * clamp;
+  s.clamps[0].position.x = -2.5 + (s.clampTravel ?? 0.65) * clamp;
+  s.clamps[1].position.x = 2.5 - (s.clampTravel ?? 0.65) * clamp;
   s.probe.position.y = 4.5 - 0.85 * contact;
   const fail = p.cycle % 13 === 12;
   s.screen.material.color.set(
@@ -136,4 +136,28 @@ export function updateInspection(s, time) {
   s.result =
     p.index === 3 ? (fail ? "NG · 绝缘异常" : "PASS · 检测通过") : "检测中";
   return p;
+}
+
+// Pose the shared robot geometry from a reachable world-space tool target.
+// Counter-rotate the wrist so the module remains aligned to the conveyor.
+export function poseLineRobot(r, target, closed = false) {
+  const dx = target[0] - r.group.position.x,
+    dz = target[2] - r.group.position.z;
+  const y = target[1] - r.group.position.y - r.turret.position.y,
+    radial = Math.hypot(dx, dz);
+  const yaw = Math.atan2(-dz, dx),
+    distance = Math.hypot(radial, y);
+  if (distance > 7.6 + 0.001)
+    throw new Error(`Robot target exceeds reach: ${distance}`);
+  r.turret.rotation.y = yaw;
+  const a = Math.atan2(y, radial) + Math.acos(Math.min(1, distance / 7.6));
+  const elbow = new THREE.Vector3(Math.cos(a) * 3.8, Math.sin(a) * 3.8, 0),
+    end = new THREE.Vector3(radial, y, 0);
+  link(r.arm1, new THREE.Vector3(), elbow, 0.7);
+  link(r.arm2, elbow, end, 0.58);
+  r.joint2.position.copy(elbow);
+  r.tool.position.copy(end);
+  r.tool.rotation.y = -yaw;
+  r.fingers[0].position.x = closed ? -1.73 : -2.2;
+  r.fingers[1].position.x = closed ? 1.73 : 2.2;
 }

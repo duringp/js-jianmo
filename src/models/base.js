@@ -16,11 +16,7 @@ import {
   detailCrane,
   detailShip,
 } from "./details.js";
-import {
-  warehouseInterior,
-  workshopDetails,
-  campusDetails,
-} from "./site-details.js";
+import { warehouseInterior, campusDetails } from "./site-details.js";
 import {
   sign,
   preprocessing,
@@ -28,6 +24,7 @@ import {
   shapedHull,
   waterDetails,
 } from "./industrial-assets.js";
+import { buildProduction } from "./production.js";
 export const BUILDINGS = [
   { x: -34, z: -29, w: 64, d: 23 },
   { x: 35, z: -29, w: 42, d: 23 },
@@ -202,35 +199,34 @@ export function createBase(scene) {
   const preprocessBuilding = building(35, -29, 42, 23, "03 / 电芯预处理");
   const fanRotors = preprocessing(preprocessBuilding);
   const hall = building(-23, 29, 82, 24, "01 / 模组装配车间", true);
-  box(hall, [72, 0.07, 1.8], [0, 0.65, -1], "dark");
-  for (let x = -34; x < 36; x += 2)
-    box(hall, [0.15, 0.1, 1.7], [x, 0.76, -1], "steel", false);
-  for (const x of [-49, -29]) {
-    const r = robot(x, 25, robots.length);
+  for (const x of [-49, -21]) {
+    const r = robot(x, 20, robots.length, { tables: false });
+    r.part.group.visible = false;
     base.add(r.group);
     robots.push(r);
     pickables.push(r.group);
   }
-  const inspect = inspection(-8, 25);
+  const inspect = inspection(-9, 25);
+  inspect.group.position.y = 0.75;
+  inspect.group.rotation.y = Math.PI / 2;
+  inspect.clampTravel = 1.2;
+  inspect.part.group.visible = false;
   base.add(inspect.group);
   pickables.push(inspect.group);
+  const production = buildProduction(base, pickables);
   const module = battery();
-  module.group.position.set(8, 1.7, 31);
+  module.group.position.set(6, 1.7, 37);
   base.add(module.group);
-  box(base, [6, 1.4, 5], [8, 1, 31], "white");
+  box(base, [6, 1.4, 5], [6, 1, 37], "white");
   selectable(
     module.group,
     "module",
     "液冷电池模组",
     "module",
-    [8, 3, 31],
-    [15, 10, 43],
+    [6, 4, 37],
+    [15, 12, 50],
   );
   pickables.push(module.group);
-  for (let x = -59; x < 16; x += 8) {
-    box(base, [4, 0.04, 2], [x, 0.7, 37], "orange", false);
-  }
-  label(base, "ASSEMBLY  /  A-01", [-24, 0.75, 39], 30);
   label(base, "LOGISTICS  LOOP", [-20, 0.28, -45], 27, "#d5dedb");
   // Compact administration and landscaped utility strip.
   const office = new THREE.Group();
@@ -348,7 +344,7 @@ export function createBase(scene) {
     light.material = mat.green.clone();
     signals.push(light);
   }
-  const conveyorParts = workshopDetails(base, hall);
+  const conveyorParts = [];
   campusDetails(base, office);
   serviceFacilities(base, pickables);
   waterDetails(base);
@@ -361,6 +357,7 @@ export function createBase(scene) {
   scene.add(grid);
   return {
     base,
+    production,
     upperStructures: [hall.userData.upperStructure].filter(Boolean),
     conveyorParts,
     fanRotors,

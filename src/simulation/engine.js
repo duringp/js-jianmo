@@ -1,5 +1,7 @@
 import { Traffic } from "./traffic.js";
 import { updateRobot, updateInspection } from "./process.js";
+import { ProductionLine } from "./production-line.js";
+import { renderProduction } from "./production-renderer.js";
 export class Simulation {
   constructor(models) {
     this.models = models;
@@ -10,7 +12,9 @@ export class Simulation {
     this.accumulator = 0;
     this.explode = 0;
     this.explodeTarget = 0;
-    this.total = 1286;
+    this.line = models.production ? new ProductionLine() : null;
+    if (this.line) this.line.prime();
+    this.total = 0;
     this.step(0);
   }
   update(realDt) {
@@ -29,8 +33,13 @@ export class Simulation {
   step(dt) {
     const m = this.models;
     this.traffic.step(dt);
-    m.robots.forEach((r) => updateRobot(r, this.time));
-    updateInspection(m.inspect, this.time);
+    if (this.line) {
+      this.line.step(dt);
+      renderProduction(m, this.line);
+    } else {
+      m.robots.forEach((r) => updateRobot(r, this.time));
+      updateInspection(m.inspect, this.time);
+    }
     this.traffic.cars.forEach((c, i) => {
       const v = m.vehicles[i];
       v.group.position.set(c.x, 0.09, c.z);
@@ -57,7 +66,7 @@ export class Simulation {
       (p, i) => (p.position.x = -57 + ((i * 10 + this.time * 1.4) % 68)),
     );
     m.ship.position.y = -0.1 + Math.sin(this.time * 0.5) * 0.07;
-    this.total = 1286 + Math.floor(this.time / 10.2) * 2;
+    this.total = this.line?.good || 0;
   }
   get faults() {
     return this.traffic.cars.filter((c) => c.fault).length;
