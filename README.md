@@ -22,16 +22,170 @@ npm run dev
 - 模组镜头提供分层拆解滑块及托盘、电芯、母排、上盖显隐；结构检视操作在暂停时仍可使用。
 - “注入车辆故障”使 AGV-01 停车，联动红色灯光、全局告警和后车等待。再次点击恢复。
 
-## 模块
+## 项目整体框架
 
-| 目录                       | 职责                                                   |
-| -------------------------- | ------------------------------------------------------ |
-| `src/scene/`               | 摄像机、渲染器、光照、静态实例化                       |
-| `src/models/`              | 厂房、道路、港口、车辆、机械臂和模组程序化模型         |
-| `src/interaction/`         | OrbitControls、Raycaster、平滑镜头与自动巡游           |
-| `src/simulation/`          | 固定时间步长、物料流、工位联锁、设备姿态与交通控制               |
-| `src/main.js`              | 场景装配和界面绑定                                     |
-| `tests/simulation.test.js` | 路线净空、交通安全与持续通行、设备接触、夹持和暂停测试 |
+项目是运行在浏览器中的单页三维仿真应用。`index.html` 加载 `src/main.js`，由入口统一装配界面、三维场景、交互控制器和仿真引擎。产线与交通状态保存在 JavaScript 内存中，再映射为 Three.js 对象姿态和页面指标；刷新页面会重新初始化仿真。
+
+### 技术组成
+
+| 层面 | 当前实现 | 用途 |
+| --- | --- | --- |
+| 页面与界面 | HTML、CSS、原生 JavaScript ES Modules | 页面布局、面板、按钮事件和状态展示 |
+| 三维引擎 | Three.js、WebGLRenderer | 程序化模型、材质、灯光、阴影、实例化与渲染 |
+| 场景交互 | OrbitControls、Raycaster | 旋转缩放、对象拾取、镜头聚焦与巡游 |
+| 仿真逻辑 | `Simulation`、`ProductionLine`、`Traffic` | 固定时间步推进、工位联锁、物料流与车辆调度 |
+| 视觉资源 | Lucide、Fontsource | SVG 图标，以及随构建打包的 DM Sans / Barlow Condensed 字体 |
+| 开发与构建 | Vite、npm、Prettier | 开发预览、生产打包、依赖管理和代码格式化 |
+| 自动验证 | Node.js 内置 `node:test` | 产线、交通、设备姿态和暂停恢复回归测试 |
+
+当前没有 React / Vue、后端服务、数据库或设备通信层。生产数据来自本地模拟，浏览器端完成全部运行逻辑；安装依赖后，构建产物可作为静态网站提供访问。
+
+### 架构关系
+
+下图表示主要调用与数据流；共享工位定义同时用于产线逻辑、模型布局和界面卡片。
+
+```mermaid
+flowchart TD
+    Entry["index.html"] --> Main["main.js：应用装配与界面"]
+    Main --> World["scene/world.js：场景、相机、渲染器"]
+    Main --> Base["models/base.js：园区模型装配"]
+    Base --> Assets["设备、产线、建筑与场地模型"]
+    Assets --> Primitives["primitives.js：基础几何、材质与拾取元数据"]
+    Main --> Controller["interaction/controller.js：拾取与镜头"]
+    Controller --> World
+    Main --> Engine["simulation/engine.js：统一仿真调度"]
+    Engine --> Line["production-line.js：产线与物料状态"]
+    Engine --> Traffic["traffic.js：车辆与路口状态"]
+    Engine --> Mapping["production-renderer.js：产线状态映射"]
+    Line --> Mapping
+    Mapping --> Process["process.js：机械臂与检测设备姿态"]
+    Process --> Models["Three.js 模型对象"]
+    Mapping --> Models
+    Base --> Models
+    Engine -->|"车辆及环境动画"| Models
+    Models --> World
+    Line --> HUD["main.js / updateHud：工序、产量与告警"]
+    Traffic --> HUD
+    Main --> Detail["detail-culling.js：距离细节显隐"]
+    Detail --> Models
+```
+
+`production-line.js` 和 `traffic.js` 的状态推进不依赖 Three.js，可在 Node.js 中独立验证。`engine.js` 负责将逻辑与模型接起来；`production-renderer.js` 修改模型对象，最终画面由 `world.renderer.render()` 绘制。
+
+### 完整目录结构
+
+```text
+chejianjianmo/
+├── index.html                       # 页面容器与模块入口
+├── package.json                     # 依赖和 dev / build / preview / test 命令
+├── package-lock.json                # 依赖版本锁定
+├── vite.config.js                   # 开发服务器与构建分包
+├── .gitignore                       # 排除依赖、构建产物与临时文件
+├── README.md                        # 使用、架构与仿真规则
+├── src/
+│   ├── main.js                      # 页面生成、模块装配、事件绑定、动画循环与 HUD
+│   ├── style.css                    # 页面样式、面板布局和响应式适配
+│   ├── scene/
+│   │   ├── world.js                 # Scene、Camera、Renderer、灯光及窗口尺寸适配
+│   │   ├── batching.js              # 按几何与材质合并静态实例
+│   │   └── detail-culling.js        # 根据相机距离隐藏或显示微小细节
+│   ├── models/
+│   │   ├── primitives.js            # 基础几何、材质缓存、文字与可选中对象标记
+│   │   ├── base.js                  # 园区总装：建筑、道路、港口及设备对象集合
+│   │   ├── equipment.js             # 电池模组、机械臂、检测站与车辆
+│   │   ├── production.js            # 七工位设施、输送线、缓存区与工件模型池
+│   │   ├── details.js               # 管线、螺栓、人员、建筑、集装箱与船舶细节
+│   │   ├── industrial-assets.js     # 标牌、叉车、预处理设备、服务设施与船体
+│   │   └── site-details.js          # 仓库内部、车间细节及园区配套建模函数
+│   ├── simulation/
+│   │   ├── engine.js                # 统一时钟、暂停、倍速与各子系统调度
+│   │   ├── production-line.js       # 工位定义、工件状态、预约、分流和统计
+│   │   ├── production-renderer.js   # 工件状态到模型姿态、夹持关系与信号灯的映射
+│   │   ├── process.js               # 工序阶段、机械臂运动学与检测夹具动作
+│   │   └── traffic.js               # 圆角路线、车辆跟车、路口预约与故障处理
+│   └── interaction/
+│       └── controller.js            # 视角预设、相机控制、拾取、高亮与自动巡游
+├── tests/
+│   ├── simulation.test.js           # 交通、净空、设备接触和基础暂停测试
+│   └── production.test.js           # 物料守恒、工位联锁、夹持与产线渲染同步测试
+├── artifacts/
+│   ├── verification.md              # 初版验证记录
+│   ├── refinement-verification.md   # 场景细化验证记录
+│   ├── production-flow-verification.md # 产线流程验证记录
+│   └── *.png                        # 场景与设备验证截图
+├── node_modules/                    # 本地安装的依赖，不提交 Git
+└── dist/                            # npm run build 输出，不提交 Git
+```
+
+### 启动与每帧运行流程
+
+1. **创建页面**：`main.js` 加载字体、样式和图标，生成三维视口及控制面板。
+2. **建立场景**：`createWorld()` 创建场景、相机、渲染器和灯光；`createBase()` 装配园区，返回供仿真与交互共用的 `models` 对象。
+3. **初始化状态**：`new Simulation(models)` 创建交通与产线控制器。产线按固定步长预运行 38 秒，形成在制工件，再通过 `step(0)` 同步初始画面。
+4. **连接交互**：创建细节显隐控制器和相机控制器，绑定暂停、倍速、出库、故障、工位聚焦、拆解和屋顶等操作。
+5. **推进仿真**：`requestAnimationFrame()` 调用 `sim.update(dt)`。引擎将单帧真实时间限制到 0.1 秒以内，乘以倍速后累积，再以 `1/60` 秒步长推进。
+6. **同步画面**：每个仿真步先更新交通与产线状态，再更新工件、机械臂、检测站、车辆及环境动画。随后更新相机和细节显隐，调用渲染器绘制场景。
+7. **刷新界面**：每帧更新场景标签位置，每 150ms 更新工序与统计面板，每约 1 秒更新 FPS 和 draw calls。细节显隐每 200ms 检查一次。
+
+全局暂停停止仿真状态推进，相机和界面仍可操作；暂停出库仅停止合格缓存的定时出库，NG 返修移交仍按自身时序运行。切回后台页面时，引擎限制单帧时间，避免补算整段离开时间。
+
+### 核心数据与状态流
+
+| 数据对象 | 管理模块 | 内容与用途 |
+| --- | --- | --- |
+| `world` | `scene/world.js` | 场景、相机和渲染器，由主循环与交互控制器使用 |
+| `models` | `models/base.js` | `robots`、`inspect`、`module`、`vehicles`、`production`、`pickables`、屋顶及环境节点等对象引用 |
+| `Simulation` | `simulation/engine.js` | 统一时间、暂停、速度、时间累积量、拆解状态，以及 `line` / `traffic` 实例 |
+| `ProductionLine` | `simulation/production-line.js` | 工位占用、活跃工件 `jobs`、缓存 `bins`、槽位预约 `reservations`、事件与累计统计 |
+| 工件 `job` | `simulation/production-line.js` | 唯一编号、工位、运行模式、阶段时间、位置、母排 / 上盖装配状态、检测结果和流转记录 |
+| 工件模型 `actor` | `models/production.js`、`production-renderer.js` | 预建 16 个可复用模型，通过 `jobId` 对应活跃工件，随夹持在园区和夹爪节点间切换归属 |
+| `Traffic` | `simulation/traffic.js` | 8 辆车的路线位置、速度、故障与等待状态，以及共享路口占用者 |
+
+工件的主要运行模式如下，工序完成后根据下游是否可接收决定转序或等待：
+
+```mermaid
+flowchart LR
+    Feed["上料创建"] --> Process["process：工位作业"]
+    Process -->|"下游已占用或缓存满"| Blocked["blocked：等待下游"]
+    Process -->|"后续工位空闲"| Transfer["transfer：转序并预占下一工位"]
+    Blocked -->|"后续工位释放"| Transfer
+    Transfer -->|"到位"| Process
+    Process -->|"末站完成且缓存有空位"| Outbound["outbound：预约缓存并移送"]
+    Blocked -->|"末站缓存释放"| Outbound
+    Outbound --> Stored["stored：合格缓存或 NG 隔离"]
+    Stored --> Finish["定时出库或移交返修，退出活跃工件集合"]
+```
+
+工位从下游向上游更新；转序启动时即占用下一工位，进入缓存前先预约槽位，避免多个工件竞争同一位置。工件到达合格缓存后才增加 `good`，NG 到达隔离区后增加 `rejected`；合格出库单独增加 `shipped`。HUD 读取这些状态，展示产量、在制数量、检测通过率与阻塞情况。
+
+设备动作由同一份工件状态驱动：产线控制器确定工序和位置，映射层设置机械臂目标、检测夹具、工件父节点及部件显隐。交通系统在同一仿真时钟下独立推进，目前没有接收产线出库运输任务。
+
+### 渲染、交互与性能职责
+
+- **程序化建模**：基础几何与材质集中复用，复杂设备由多个基础部件组合；`base.js` 负责装配和对外提供对象引用。
+- **静态合批**：`batchStatic()` 合并同级中可合并的网格及已有实例。可选中、动态、距离裁剪、带子节点或透明材质对象会被跳过，保留独立行为。
+- **对象交互**：模型通过 `selectable()` 写入拾取信息并加入 `pickables`，控制器处理 Raycaster 点击、包围盒高亮及平滑镜头移动，回调交给 `main.js` 更新面板。
+- **显示控制**：屋顶、顶部桁架、路线与模组层级由界面操作控制；微小几何通过 `detailRange` 标记按相机距离显示。
+- **渲染预算**：设备像素比限制为 1.7，使用一个投影方向光和固定 2048² 阴影贴图；Vite 将 Three.js、图标拆为独立构建块。
+
+### 开发、验证与扩展入口
+
+| 需要调整的内容 | 主要修改位置 | 关联检查 |
+| --- | --- | --- |
+| 页面布局、按钮或指标 | `main.js`、`style.css` | 面板状态、窄屏布局及交互反馈 |
+| 园区设施、设备外观 | `models/` 对应文件，必要时更新 `base.js` | 拾取对象、动态节点标记、车道和工件净空 |
+| 工位顺序、节拍与缓存 | `production-line.js`、`models/production.js`、`production-renderer.js` | 工位索引、界面容量文案、姿态时序与产线测试同步调整 |
+| 机械臂动作或检测姿态 | `process.js`、`production-line.js`、`production-renderer.js` | 可达范围、拾取落位连续性、探针接触与夹持关系 |
+| 路线、车辆数量或交通规则 | `traffic.js`、`models/base.js`，以及 `main.js` 中对应展示 | 仿真车辆与模型数量一致、跟车间距、路口释放和设施净空 |
+| 镜头预设与点击聚焦 | `interaction/controller.js`、模型拾取元数据 | 视角目标、遮挡和鼠标接管巡游 |
+
+工位坐标、节拍与输出槽位集中定义在 `production-line.js`，但设备映射和界面仍包含固定工位索引与容量文案，新增工位需要联动修改这些使用位置。
+
+开发时使用 `npm run dev`，默认地址为 `http://127.0.0.1:5173`，端口被占用时直接报错。提交功能改动前运行 `npm test` 和 `npm run build`；自动测试覆盖产线物料守恒、30 分钟持续通行、阻塞恢复、净空、设备姿态和暂停同步，视觉与操作检查记录在 `artifacts/`。`npm run preview` 用于本地检查构建结果。
+
+浏览器控制台可调用 `window.__twin.snapshot()` 查看仿真时间、暂停状态、车辆状态、最小观测间距、绘制调用数及产线快照；`window.__twin` 同时暴露 `world`、`models`、`sim` 和 `controller` 供调试。
+
+后续如需接入 PLC / MES、保存历史数据或建立 AGV 搬运任务，应新增通信与数据适配层，并明确模拟状态与真实设备状态的来源及控制边界。这些能力尚未实现；当前上料、出库和返修均采用模拟边界事件。
 
 ## 仿真规则
 
